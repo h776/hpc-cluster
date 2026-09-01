@@ -6,13 +6,13 @@ A functional 3-node High-Performance Computing (HPC) testbed featuring centraliz
 
 ## 1. Cluster Architecture & Network Topology
 
-| Hostname | Role | Example IP | Operating System | Core Services |
+| Hostname | Role | IP Address | Operating System | Core Services |
 | :--- | :--- | :--- | :--- | :--- |
-| **`ctrl.hpc.test`** | Controller / Head Node | `192.168.56.10` | Rocky Linux 9 | FreeIPA Server, `slurmctld`, NFS Server |
-| **`node1.hpc.test`** | Compute Node 1 | `192.168.56.11` | Rocky Linux 9 | SSSD Client, `slurmd`, NFS Client |
-| **`node2.hpc.test`** | Compute Node 2 | `192.168.56.12` | Rocky Linux 9 | SSSD Client, `slurmd`, NFS Client |
+| **`ctrl.hpc.test`** | Controller / Head Node | `<CTRL_IP>` | Rocky Linux 9 | FreeIPA Server, `slurmctld`, NFS Server |
+| **`node1.hpc.test`** | Compute Node 1 | `<NODE1_IP>` | Rocky Linux 9 | SSSD Client, `slurmd`, NFS Client |
+| **`node2.hpc.test`** | Compute Node 2 | `<NODE2_IP>` | Rocky Linux 9 | SSSD Client, `slurmd`, NFS Client |
 
-* **Network Subnet:** `192.168.56.0/24` (Private Host-Only Subnet)
+* **Network Subnet:** Private host-only virtual network (`192.168.X.0/24`)
 * **Shared Storage:** `/home` exported via NFSv4 from `ctrl` to `node1` and `node2`
 * **Authentication Domain:** `HPC.TEST` (FreeIPA Kerberos Realm)
 
@@ -37,6 +37,7 @@ A functional 3-node High-Performance Computing (HPC) testbed featuring centraliz
 
 ## 3. Quick Start & Job Submission Guide
 
-### Step 1: Authenticate as a Cluster User
+### Step 1: Access the Controller Node
 ```bash
-kinit <username>@HPC.TEST
+# Log into the controller VM from host
+vagrant ssh ctrl
