@@ -1,0 +1,37 @@
+---
+- name: Enroll Compute Nodes into FreeIPA Realm
+  hosts: compute
+  become: true
+  vars:
+    ipa_domain: "hpc.test"
+    ipa_realm: "HPC.TEST"
+    ipa_server: "ctrl.hpc.test"
+    ipa_admin_user: "admin"
+    ipa_admin_password: "YourStrongAdminPassword123!"
+
+  tasks:
+    - name: Install FreeIPA client packages
+      ansible.builtin.package:
+        name:
+          - freeipa-client
+          - sssd
+        state: present
+
+    - name: Run FreeIPA client installation and join domain
+      ansible.builtin.command: >
+        ipa-client-install --unattended
+        --domain={{ ipa_domain }}
+        --realm={{ ipa_realm }}
+        --server={{ ipa_server }}
+        --principal={{ ipa_admin_user }}
+        --password={{ ipa_admin_password }}
+        --mkhomedir
+        --force-join
+      args:
+        creates: /etc/ipa/default.conf
+
+    - name: Ensure SSSD and mkhomedir are enabled
+      ansible.builtin.service:
+        name: sssd
+        state: restarted
+        enabled: true

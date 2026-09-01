@@ -1,0 +1,24 @@
+- name: Install FreeIPA server
+  hosts: ctrl
+  become: true
+  vars_files:
+    - group_vars/ipa_vault.yml
+
+  tasks:
+    - name: Install FreeIPA server
+      ansible.builtin.command:
+        cmd: >
+          ipa-server-install
+          --unattended
+          --hostname=ctrl.hpc.test
+          --ip-address=192.168.56.10
+          --domain=hpc.test
+          --realm=HPC.TEST
+          --ds-password={{ ipa_dm_password }}
+          --admin-password={{ ipa_admin_password }}
+          --setup-dns
+          --no-forwarders
+          --no-reverse
+          --no-ntp
+          --skip-mem-check
+   #   no_log: true

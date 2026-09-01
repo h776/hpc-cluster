@@ -1,0 +1,47 @@
+---
+- name: Install and Configure FreeIPA Server on Ctrl
+  hosts: ctrl
+  become: true
+  vars:
+    ipa_domain: "hpc.test"
+    ipa_realm: "HPC.TEST"
+    ipa_admin_password: "YourStrongAdminPassword123!"
+    ipa_dm_password: "YourStrongDMPassword123!"
+
+  tasks:
+    - name: Enable FreeIPA stream module (RHEL/Rocky/AlmaLinux)
+      ansible.builtin.dnf:
+        name: "@idm:DL1"
+        state: present
+      ignore_errors: true
+
+    - name: Install FreeIPA server package
+      ansible.builtin.package:
+        name: freeipa-server
+        state: present
+
+    - name: Install FreeIPA Server non-interactively
+      ansible.builtin.command: >
+        ipa-server-install --unattended
+        --domain={{ ipa_domain }}
+        --realm={{ ipa_realm }}
+        --ds-password={{ ipa_dm_password }}
+        --admin-password={{ ipa_admin_password }}
+        --hostname=ctrl.hpc.test
+        --setup-dns
+        --no-forwarders
+        --no-ntp
+      args:
+        creates: /etc/ipa/default.conf
+
+    - name: Ensure Firewalld is running
+      ansible.builtin.service:
+        name: firewalld
+        state: started
+        enabled: true
+      ignore_errors: true
+
+    - name: Open FreeIPA ports in Firewall
+      ansible.builtin.shell: |
+        firewall-cmd --add-service={freeipa-ldap,freeipa-ldaps,dns,ntp} --permanent || true
+        firewall-cmd --reload || true

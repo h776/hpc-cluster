@@ -1,0 +1,39 @@
+---
+- name: Configure common HPC node settings
+  hosts: hpc
+  become: true
+
+  tasks:
+
+    - name: Update apt package cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install common packages
+      ansible.builtin.apt:
+        name:
+          - curl
+          - wget
+          - vim
+          - git
+          - chrony
+          - openssh-client
+          - python3
+          - python3-pip
+        state: present
+
+    - name: Ensure chrony is enabled and running
+      ansible.builtin.service:
+        name: chrony
+        state: started
+        enabled: true
+
+    - name: Ensure hostnames are present in /etc/hosts
+      ansible.builtin.blockinfile:
+        path: /etc/hosts
+        marker: "# {mark} HPC CLUSTER"
+        block: |
+          192.168.56.10 ctrl
+          192.168.56.11 node1
+          192.168.56.12 node2

@@ -1,0 +1,119 @@
+---
+- name: Deploy and Configure Consistent Slurm Cluster
+  hosts: all
+  become: true
+  vars:
+    slurm_uid: 385
+    slurm_gid: 385
+    munge_uid: 384
+    munge_gid: 384
+    slurm_controller: "ctrl"
+
+  tasks:
+    # ------------------------------------------------------------------
+    # 1. PREREQUISITES & USERS (Must run BEFORE package installation)
+    # ------------------------------------------------------------------
+    - name: Ensure munge group exists
+      ansible.builtin.group:
+        name: munge
+        gid: "{{ munge_gid }}"
+        state: present
+
+    - name: Ensure munge user exists
+      ansible.builtin.user:
+        name: munge
+        uid: "{{ munge_uid }}"
+        group: munge
+        shell: /sbin/nologin
+        system: true
+        state: present
+
+    - name: Ensure slurm group exists
+      ansible.builtin.group:
+        name: slurm
+        gid: "{{ slurm_gid }}"
+        state: present
+
+    - name: Ensure slurm user exists
+      ansible.builtin.user:
+        name: slurm
+        uid: "{{ slurm_uid }}"
+        group: slurm
+        shell: /bin/false
+        system: true
+        state: present
+
+    # ------------------------------------------------------------------
+    # 2. PACKAGES & DIRECTORIES
+    # ------------------------------------------------------------------
+    - name: Install Munge and Slurm dependencies
+      ansible.builtin.package:
+        name:
+          - munge
+          - chrony # Required for clock synchronization
+        state: present
+
+    - name: Create Slurm directories with explicit ownership
+      ansible.builtin.file:
+        path: "{{ item }}"
+        owner: slurm
+        group: slurm
+        mode: '0755'
+        state: directory
+      loop:
+        - /var/spool/slurmd
+        - /var/spool/slurmctld
+        - /var/log/slurm
+        - /etc/slurm
+
+    # ------------------------------------------------------------------
+    # 3. MUNGE AUTHENTICATION KEY SETUP
+    # ------------------------------------------------------------------
+    - name: Generate MUNGE key on controller (if missing)
+      ansible.builtin.command: create-munge-key -r
+      args:
+        creates: /etc/munge/munge.key
+      when: inventory_hostname == slurm_controller
+
+    - name: Fetch MUNGE key from controller
+      ansible.builtin.slurp:
+        src: /etc/munge/munge.key
+      register: munge_key_encoded
+      when: inventory_hostname == slurm_controller
+
+    - name: Distribute MUNGE key to all nodes
+      ansible.builtin.copy:
+        content: "{{ hostvars[slurm_controller]['munge_key_encoded']['content'] | b64decode }}"
+        dest: /etc/munge/munge.key
+        owner: munge
+        group: munge
+        mode: '0400'
+
+    - name: Enable and start MUNGE service
+      ansible.builtin.systemd:
+        name: munge
+        state: restarted
+        enabled: true
+
+    - name: Enable and start Chrony (NTP)
+      ansible.builtin.systemd:
+        name: chronyd
+        state: started
+        enabled: true
+
+    # ------------------------------------------------------------------
+    # 4. SLURM SERVICES
+    # ------------------------------------------------------------------
+    - name: Start slurmctld on Controller
+      ansible.builtin.systemd:
+        name: slurmctld
+        state: restarted
+        enabled: true
+      when: inventory_hostname == slurm_controller
+
+    - name: Start slurmd on Compute Nodes
+      ansible.builtin.systemd:
+        name: slurmd
+        state: restarted
+        enabled: true
+      when: inventory_hostname != slurm_controller

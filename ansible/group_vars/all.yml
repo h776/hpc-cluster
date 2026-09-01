@@ -1,0 +1,11 @@
+---
+hpc_domain: hpc.test
+hpc_network: 192.168.56.0/24
+
+hpc_nodes:
+  ctrl:
+    ip: 192.168.56.10
+  node1:
+    ip: 192.168.56.11
+  node2:
+    ip: 192.168.56.12

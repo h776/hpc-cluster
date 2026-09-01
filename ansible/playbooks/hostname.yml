@@ -1,0 +1,31 @@
+---
+- name: Configure HPC hostnames and name resolution
+  hosts: hpc
+  become: true
+
+  tasks:
+    - name: Set system hostname
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname }}.{{ hpc_domain }}"
+
+    - name: Remove temporary localhost hostname entries
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: '^127\.0\.[12]\.1\s+'
+        state: absent
+
+    - name: Configure local hostname entry
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: '^127\.0\.1\.1\s+'
+        line: "127.0.1.1 {{ inventory_hostname }}.{{ hpc_domain }} {{ inventory_hostname }}"
+        create: true
+
+    - name: Configure cluster name resolution
+      ansible.builtin.blockinfile:
+        path: /etc/hosts
+        marker: "# {mark} HPC CLUSTER HOSTS"
+        block: |
+          192.168.56.10 ctrl.hpc.test ctrl
+          192.168.56.11 node1.hpc.test node1
+          192.168.56.12 node2.hpc.test node2

@@ -1,0 +1,40 @@
+---
+- name: Join compute nodes to FreeIPA
+  hosts: compute
+  become: true
+
+  tasks:
+    - name: Install FreeIPA client packages
+      ansible.builtin.dnf:
+        name:
+          - ipa-client
+          - sssd
+          - oddjob
+          - oddjob-mkhomedir
+        state: present
+
+    - name: Join node to FreeIPA
+      ansible.builtin.command:
+        cmd: >
+          ipa-client-install
+          --unattended
+          --domain=hpc.test
+          --realm=HPC.TEST
+          --server=ctrl.hpc.test
+          --principal=admin
+          --password={{ ipa_admin_password }}
+          --mkhomedir
+          --force-join
+      no_log: true
+
+    - name: Enable and start SSSD
+      ansible.builtin.systemd:
+        name: sssd
+        enabled: true
+        state: started
+
+    - name: Enable and start oddjobd
+      ansible.builtin.systemd:
+        name: oddjobd
+        enabled: true
+        state: started
