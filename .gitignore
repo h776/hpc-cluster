@@ -3,5 +3,5 @@
 *.retry
 *.log
 .ansible/
-*.box
 .vagrant/
+*.box
